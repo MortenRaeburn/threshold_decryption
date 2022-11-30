@@ -1,5 +1,9 @@
 use crate::pke::Pke;
-use num::{bigint::RandomBits, BigInt, BigUint, Zero};
+use num::{
+    bigint::RandomBits,
+    traits::{Pow},
+    BigInt, BigUint, Zero,
+};
 use rand::prelude::*;
 
 #[non_exhaustive]
@@ -92,18 +96,26 @@ fn new_rand_biguint_vec(n: usize) -> Vec<BigUint> {
 }
 
 impl Lwe {
-    fn gen_e(n: usize) -> Vec<BigUint> {
+    fn gen_e(n: usize, q: &BigUint) -> Vec<BigUint> {
         eprintln!("WARNING: Randomness not implemented. All values of e are 0");
+
+        // let mut rng = rand::thread_rng();
+
+        // let sigma = q.sqrt().sqrt().to_f64().unwrap();
+
+        // Standard
+
+        // rng.sample_iter(dist);
 
         (0..n).map(|_| BigUint::zero()).collect::<Vec<_>>()
     }
 
-    fn gen_pk(&self, s: &Vec<BigUint>) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
+    fn gen_pk(&self, s: &[BigUint]) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
         let a = (0..self.m)
             .map(|_| new_rand_biguint_vec(self.n))
             .collect::<Vec<_>>();
 
-        let _e = Lwe::gen_e(self.m);
+        let _e = Lwe::gen_e(self.m, &self.q);
 
         let b = a
             .iter()
