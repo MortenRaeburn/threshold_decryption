@@ -1,11 +1,13 @@
 use crate::pke::Pke;
-use num::{
-    bigint::RandomBits,
-    traits::{Pow},
-    BigInt, BigUint, Zero,
-};
+use num::{bigint::RandomBits, traits::Pow, BigInt, BigUint, Zero};
 use rand::prelude::*;
 
+pub type PublicKey = (Vec<Vec<BigUint>>, Vec<BigUint>);
+pub type SecretKey = Vec<BigUint>;
+pub type Ciphertext = (Vec<BigUint>, BigUint);
+pub type Plaintext = usize;
+
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct Lwe {
     pub n: usize,
@@ -24,10 +26,10 @@ impl Lwe {
 }
 
 impl Pke for Lwe {
-    type PublicKey = (Vec<Vec<BigUint>>, Vec<BigUint>);
-    type SecretKey = Vec<BigUint>;
-    type Ciphertext = (Vec<BigUint>, BigUint);
-    type Plaintext = usize;
+    type Ciphertext = Ciphertext;
+    type PublicKey = PublicKey;
+    type SecretKey = SecretKey;
+    type Plaintext = Plaintext;
 
     fn keygen(&self) -> (Self::PublicKey, Self::SecretKey) {
         let sk = new_rand_biguint_vec(self.n);

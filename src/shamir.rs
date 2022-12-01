@@ -1,7 +1,7 @@
 use num::{BigUint, One, Zero};
 
 #[derive(Clone)]
-pub struct Share(usize, BigUint);
+pub struct Share(pub usize, pub BigUint);
 
 fn lagrange(shares: &[Share], j: usize, x: usize) -> BigUint {
     let mut res = BigUint::one();
@@ -20,7 +20,7 @@ fn lagrange(shares: &[Share], j: usize, x: usize) -> BigUint {
     res
 }
 
-fn interpolate(shares: &[Share]) -> impl Fn(usize) -> BigUint {
+pub fn interpolate(shares: &[Share]) -> impl Fn(usize) -> BigUint {
     let shares = shares.to_vec();
 
     move |x: usize| {
