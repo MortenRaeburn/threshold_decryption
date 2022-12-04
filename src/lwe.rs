@@ -33,7 +33,7 @@ impl Pke for Lwe {
 
     fn keygen(&self) -> (Self::PublicKey, Self::SecretKey) {
         let sk = new_rand_biguint_vec(self.n);
-        let pk = Lwe::gen_pk(self, &sk);
+        let pk = Self::gen_pk(&sk, self.m, self.n, &self.q);
 
         (pk, sk)
     }
@@ -112,24 +112,32 @@ impl Lwe {
         (0..n).map(|_| BigUint::zero()).collect::<Vec<_>>()
     }
 
-    fn gen_pk(&self, s: &[BigUint]) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
-        let a = (0..self.m)
-            .map(|_| new_rand_biguint_vec(self.n))
-            .collect::<Vec<_>>();
+    pub fn gen_pk(
+        s: &[BigUint],
+        m: usize,
+        n: usize,
+        q: &BigUint,
+    ) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
+        let a = (0..m).map(|_| new_rand_biguint_vec(n)).collect::<Vec<_>>();
 
-        let _e = Lwe::gen_e(self.m, &self.q);
+        let _e = Self::gen_e(m, &q);
 
+        let b = Self::gen_b(&a, s, q);
+
+        (a, b)
+    }
+
+    pub fn gen_b(a: &Vec<Vec<BigUint>>, s: &[BigUint], q: &BigUint) -> Vec<BigUint> {
         let b = a
             .iter()
             .map(|ai| {
                 ai.iter()
                     .zip(s)
                     .fold(BigUint::zero(), |acc, (ai_elem, si)| {
-                        (acc + ai_elem * si) % &self.q
+                        (acc + ai_elem * si) % q
                     })
             })
             .collect::<Vec<_>>();
-
-        (a, b)
+        b
     }
 }

@@ -1,5 +1,6 @@
-use crate::shamir::Share;
+use num::{BigUint, bigint::RandBigInt};
 
-fn rand_shared_value() -> Vec<Share> {
-    todo!()
+pub fn rand_value(n: usize) -> BigUint {
+    let mut rng = rand::thread_rng();
+    rng.gen_biguint(n as u64)
 }

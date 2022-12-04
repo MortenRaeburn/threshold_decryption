@@ -1,3 +1,5 @@
+use core::panic;
+
 use num::{
     bigint::{RandBigInt, RandomBits},
     BigUint, Zero,
@@ -7,12 +9,12 @@ use rand::{rngs::SmallRng, Rng, SeedableRng};
 const NUMBER_OF_PARTIES: usize = 6;
 
 use crate::{
-    lwe::{self, Ciphertext},
+    lwe::{self, Ciphertext, Lwe},
     pke::Pke,
     shamir::{interpolate, Share},
 };
 
-struct Party {
+pub struct Party {
     number: usize,
     sk: Option<lwe::SecretKey>,
     pk: Option<lwe::PublicKey>,
@@ -34,12 +36,21 @@ impl Party {
     }
 
     pub fn rand_value(&self, n: usize) -> BigUint {
-        let mut rng = rand::thread_rng();
-        rng.gen_biguint(n as u64)
+        crate::random::rand_value(n)
     }
 
     fn set_sk(&mut self, sk: &lwe::SecretKey) {
         self.sk = Some(sk.clone());
+    }
+
+    pub fn set_pk_from_a(&mut self, a: Vec<Vec<BigUint>>) {
+        let q = &self.crypto.q;
+        let s = self.sk.clone().unwrap();
+
+        let b = Lwe::gen_b(&a, &s, q);
+
+        let pk = (a, b);
+        self.pk = Some(pk);
     }
 
     fn decrypt1(&self, c: &lwe::Ciphertext) -> Share {
@@ -59,14 +70,19 @@ impl Party {
     }
 
     fn gen_x(&self, keys: &Vec<BigUint>, c: &lwe::Ciphertext) -> BigUint {
-        keys.iter().fold(BigUint::zero(), |acc, key| {
-            acc + rand_from_cipher_and_key(c, key)
-        })
+        if keys.len() != 1 {
+            panic!(
+                "Expecting case u-t = 1, but keys length was: {}",
+                keys.len()
+            );
+        }
+
+        rand_from_cipher_and_key(c, &keys[0])
     }
 
     fn decrypt2(&self, shares: &[Share]) -> lwe::Plaintext {
-        let m = interpolate(shares)(0);
         let q = &self.crypto.q;
+        let m = interpolate(shares)(0) % q;
 
         let lower = q / 4u32;
         let upper = q + &lower;
@@ -94,10 +110,13 @@ pub struct Dealer {
 impl Dealer {
     pub fn new(n: usize) -> Self {
         let crypto = lwe::Lwe::new(n);
-        let parties = (0..NUMBER_OF_PARTIES)
+        let m = crypto.m;
+        let q = &crypto.q;
+
+        let mut parties = (0..NUMBER_OF_PARTIES)
             .map(|number| Party::new(number, crypto.clone()))
             .collect::<Vec<_>>();
-        let pk = todo!();
+        let pk = Self::keygen(n, m, q, &mut parties);
 
         Self {
             parties,
@@ -106,18 +125,51 @@ impl Dealer {
         }
     }
 
-    pub fn keygen(&self) {
-        let mut shares = Vec::new();
+    pub fn keygen(
+        n: usize,
+        m: usize,
+        q: &BigUint,
+        parties: &mut Vec<Party>,
+    ) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
+        let u = parties.len();
 
-        for party in &self.parties {
-            let r_val = party.rand_value(self.crypto.n);
-            let share = Share(party.number, r_val);
-            shares.push(share);
+        let mut s = Vec::with_capacity(n);
+        let mut sks = vec![Vec::with_capacity(n); u];
+        let mut keys = vec![Vec::with_capacity(1); u];
 
-            todo!()
+        // Generate secret key
+        for _ in 0..n {
+            let mut shares = Vec::new();
+
+            for (i, party) in parties.iter().enumerate() {
+                let r_val = party.rand_value(n);
+                sks[i].push(r_val.clone());
+                let share = Share(party.number, r_val);
+                shares.push(share);
+            }
+
+            let l = interpolate(&shares);
+            let si = l(0);
+
+            s.push(si);
         }
 
-        todo!()
+        // Generate keys
+        for i in 0..u {
+            let r_val = parties[i].rand_value(n);
+            keys[i].push(r_val.clone());
+        }
+
+        let (a, b) = Lwe::gen_pk(&s, m, n, q);
+
+        // Set all keys
+        for (i, party) in parties.iter_mut().enumerate() {
+            let sk = sks[i].clone();
+            party.set_sk(&sk);
+            party.set_pk_from_a(a.clone());
+        }
+
+        (a, b)
     }
 
     pub fn encrypt(&self, m: &lwe::Plaintext) -> lwe::Ciphertext {
