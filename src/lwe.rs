@@ -120,14 +120,14 @@ impl Lwe {
     ) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
         let a = (0..m).map(|_| new_rand_biguint_vec(n)).collect::<Vec<_>>();
 
-        let _e = Self::gen_e(m, &q);
+        let _e = Self::gen_e(m, q);
 
         let b = Self::gen_b(&a, s, q);
 
         (a, b)
     }
 
-    pub fn gen_b(a: &Vec<Vec<BigUint>>, s: &[BigUint], q: &BigUint) -> Vec<BigUint> {
+    pub fn gen_b(a: &[Vec<BigUint>], s: &[BigUint], q: &BigUint) -> Vec<BigUint> {
         let b = a
             .iter()
             .map(|ai| {

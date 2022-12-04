@@ -1,10 +1,9 @@
 use core::panic;
 
 use num::{
-    bigint::{RandBigInt, RandomBits},
     BigUint, Zero,
 };
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, SeedableRng};
 
 const NUMBER_OF_PARTIES: usize = 6;
 

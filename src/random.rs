@@ -1,4 +1,4 @@
-use num::{BigUint, bigint::RandBigInt};
+use num::{bigint::RandBigInt, BigUint};
 
 pub fn rand_value(n: usize) -> BigUint {
     let mut rng = rand::thread_rng();
