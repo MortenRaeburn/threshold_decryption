@@ -96,8 +96,7 @@ impl Party {
 }
 
 fn rand_from_cipher_and_key(c: &Ciphertext, key: &BigUint, n: usize) -> BigUint {
-    let a = &c.0;
-    let b = &c.1;
+    let (a, b) = c;
 
     let mut input = Vec::new();
 
