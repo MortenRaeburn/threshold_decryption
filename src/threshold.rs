@@ -1,7 +1,8 @@
 use core::panic;
 
-use num::{BigUint, Zero};
+use num::{bigint::RandBigInt, BigUint, Zero};
 use rand::{rngs::SmallRng, SeedableRng};
+use sha256::digest;
 
 const NUMBER_OF_PARTIES: usize = 6;
 
@@ -67,6 +68,8 @@ impl Party {
     }
 
     fn gen_x(&self, keys: &Vec<BigUint>, c: &lwe::Ciphertext) -> BigUint {
+        let n = self.crypto.n;
+
         if keys.len() != 1 {
             panic!(
                 "Expecting case u-t = 1, but keys length was: {}",
@@ -74,7 +77,7 @@ impl Party {
             );
         }
 
-        rand_from_cipher_and_key(c, &keys[0])
+        rand_from_cipher_and_key(c, &keys[0], n)
     }
 
     fn decrypt2(&self, shares: &[Share]) -> lwe::Plaintext {
@@ -92,10 +95,27 @@ impl Party {
     }
 }
 
-fn rand_from_cipher_and_key(c: &Ciphertext, key: &BigUint) -> BigUint {
-    let mut rng = SmallRng::seed_from_u64(0);
+fn rand_from_cipher_and_key(c: &Ciphertext, key: &BigUint, n: usize) -> BigUint {
+    let a = &c.0;
+    let b = &c.1;
 
-    todo!()
+    let mut input = Vec::new();
+
+    for ai in a {
+        input.extend(ai.to_bytes_be());
+    }
+
+    input.extend(b.to_bytes_be());
+    input.extend(key.to_bytes_be());
+
+    let hash = digest(input.as_slice());
+    let hash = hash.as_bytes();
+
+    let mut seed = [0u8; 32];
+    seed.iter_mut().zip(hash).for_each(|(s, h)| *s = *h);
+
+    let mut rng = SmallRng::from_seed(seed);
+    rng.gen_biguint(n as u64)
 }
 
 pub struct Dealer {
