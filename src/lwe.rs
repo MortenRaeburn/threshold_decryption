@@ -1,10 +1,10 @@
 use crate::pke::Pke;
-use num::{bigint::RandomBits, traits::Pow, BigInt, BigUint, Zero};
+use num::{bigint::RandomBits, traits::Pow, BigInt, Zero};
 use rand::prelude::*;
 
-pub type PublicKey = (Vec<Vec<BigUint>>, Vec<BigUint>);
-pub type SecretKey = Vec<BigUint>;
-pub type Ciphertext = (Vec<BigUint>, BigUint);
+pub type PublicKey = (Vec<Vec<BigInt>>, Vec<BigInt>);
+pub type SecretKey = Vec<BigInt>;
+pub type Ciphertext = (Vec<BigInt>, BigInt);
 pub type Plaintext = usize;
 
 #[derive(Clone)]
@@ -12,13 +12,13 @@ pub type Plaintext = usize;
 pub struct Lwe {
     pub n: usize,
     pub m: usize,
-    pub q: BigUint,
+    pub q: BigInt,
 }
 
 impl Lwe {
     pub fn new(n: usize) -> Self {
         let m = n.pow(3);
-        let q = BigUint::from(2u32);
+        let q = BigInt::from(2u32);
         let q = q.pow(n as u32);
 
         Self { n, m, q }
@@ -32,7 +32,7 @@ impl Pke for Lwe {
     type Plaintext = Plaintext;
 
     fn keygen(&self) -> (Self::PublicKey, Self::SecretKey) {
-        let sk = new_rand_biguint_vec(self.n);
+        let sk = new_rand_BigInt_vec(self.n);
         let pk = Self::gen_pk(&sk, self.m, self.n, &self.q);
 
         (pk, sk)
@@ -48,8 +48,8 @@ impl Pke for Lwe {
         subs_i.shuffle(&mut rng);
         let subs_i = subs_i.get(0..self.m / 2).unwrap();
 
-        let mut a = vec![BigUint::zero(); self.m];
-        let mut b = BigUint::from(*m) * &self.q / 2u32;
+        let mut a = vec![BigInt::zero(); self.m];
+        let mut b = BigInt::from(*m) * &self.q / 2u32;
 
         for i in subs_i {
             let ai = pk.0.get(*i).unwrap();
@@ -73,7 +73,7 @@ impl Pke for Lwe {
         let a: BigInt =
             c.0.iter()
                 .zip(sk)
-                .fold(BigUint::zero(), |acc, (ai, si)| (acc + ai * si) % &self.q)
+                .fold(BigInt::zero(), |acc, (ai, si)| (acc + ai * si) % &self.q)
                 .into();
 
         let m = (b - a) % &q;
@@ -89,16 +89,16 @@ impl Pke for Lwe {
     }
 }
 
-fn new_rand_biguint_vec(n: usize) -> Vec<BigUint> {
+fn new_rand_BigInt_vec(n: usize) -> Vec<BigInt> {
     let mut rng = rand::thread_rng();
 
     (0..n)
-        .map(|_| rng.sample::<BigUint, _>(RandomBits::new(n as u64)))
+        .map(|_| rng.sample::<BigInt, _>(RandomBits::new(n as u64)))
         .collect::<Vec<_>>()
 }
 
 impl Lwe {
-    fn gen_e(n: usize, q: &BigUint) -> Vec<BigUint> {
+    fn gen_e(n: usize, q: &BigInt) -> Vec<BigInt> {
         eprintln!("WARNING: Randomness not implemented. All values of e are 0");
 
         // let mut rng = rand::thread_rng();
@@ -109,16 +109,11 @@ impl Lwe {
 
         // rng.sample_iter(dist);
 
-        (0..n).map(|_| BigUint::zero()).collect::<Vec<_>>()
+        (0..n).map(|_| BigInt::zero()).collect::<Vec<_>>()
     }
 
-    pub fn gen_pk(
-        s: &[BigUint],
-        m: usize,
-        n: usize,
-        q: &BigUint,
-    ) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
-        let a = (0..m).map(|_| new_rand_biguint_vec(n)).collect::<Vec<_>>();
+    pub fn gen_pk(s: &[BigInt], m: usize, n: usize, q: &BigInt) -> (Vec<Vec<BigInt>>, Vec<BigInt>) {
+        let a = (0..m).map(|_| new_rand_BigInt_vec(n)).collect::<Vec<_>>();
 
         let _e = Self::gen_e(m, q);
 
@@ -127,15 +122,13 @@ impl Lwe {
         (a, b)
     }
 
-    pub fn gen_b(a: &[Vec<BigUint>], s: &[BigUint], q: &BigUint) -> Vec<BigUint> {
+    pub fn gen_b(a: &[Vec<BigInt>], s: &[BigInt], q: &BigInt) -> Vec<BigInt> {
         let b = a
             .iter()
             .map(|ai| {
-                ai.iter()
-                    .zip(s)
-                    .fold(BigUint::zero(), |acc, (ai_elem, si)| {
-                        (acc + ai_elem * si) % q
-                    })
+                ai.iter().zip(s).fold(BigInt::zero(), |acc, (ai_elem, si)| {
+                    (acc + ai_elem * si) % q
+                })
             })
             .collect::<Vec<_>>();
         b

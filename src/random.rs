@@ -1,6 +1,6 @@
-use num::{bigint::RandBigInt, BigUint};
+use num::{bigint::RandBigInt, BigInt};
 
-pub fn rand_value(n: usize) -> BigUint {
+pub fn rand_value(n: usize) -> BigInt {
     let mut rng = rand::thread_rng();
-    rng.gen_biguint(n as u64)
+    rng.gen_bigint(n as u64)
 }

@@ -1,6 +1,6 @@
 use core::panic;
 
-use num::{bigint::RandBigInt, BigUint, Zero};
+use num::{bigint::RandBigInt, BigInt, Zero};
 use rand::{rngs::SmallRng, SeedableRng};
 use sha256::digest;
 
@@ -17,7 +17,7 @@ pub struct Party {
     sk: Option<lwe::SecretKey>,
     pk: Option<lwe::PublicKey>,
     crypto: lwe::Lwe,
-    keys: Vec<BigUint>,
+    keys: Vec<BigInt>,
 }
 
 impl Party {
@@ -33,7 +33,7 @@ impl Party {
         }
     }
 
-    pub fn rand_value(&self, n: usize) -> BigUint {
+    pub fn rand_value(&self, n: usize) -> BigInt {
         crate::random::rand_value(n)
     }
 
@@ -41,7 +41,7 @@ impl Party {
         self.sk = Some(sk.clone());
     }
 
-    pub fn set_pk_from_a(&mut self, a: Vec<Vec<BigUint>>) {
+    pub fn set_pk_from_a(&mut self, a: Vec<Vec<BigInt>>) {
         let q = &self.crypto.q;
         let s = self.sk.clone().unwrap();
 
@@ -54,20 +54,19 @@ impl Party {
     fn decrypt1(&self, c: &lwe::Ciphertext) -> Share {
         let sk = self.sk.clone().unwrap(); //At this point, we know that sk should be Some - which is after keygen
 
-        let a = &c.0;
-        let b = &c.1;
+        let (a, b) = c;
 
         let e = b - a
             .iter()
             .zip(sk)
-            .fold(BigUint::zero(), |acc, (a, sk)| acc + a * sk);
+            .fold(BigInt::zero(), |acc, (a, sk)| acc + a * sk);
 
         let x = self.gen_x(&self.keys, c);
 
         Share(self.number, x + e)
     }
 
-    fn gen_x(&self, keys: &Vec<BigUint>, c: &lwe::Ciphertext) -> BigUint {
+    fn gen_x(&self, keys: &Vec<BigInt>, c: &lwe::Ciphertext) -> BigInt {
         let n = self.crypto.n;
 
         if keys.len() != 1 {
@@ -95,17 +94,17 @@ impl Party {
     }
 }
 
-fn rand_from_cipher_and_key(c: &Ciphertext, key: &BigUint, n: usize) -> BigUint {
+fn rand_from_cipher_and_key(c: &Ciphertext, key: &BigInt, n: usize) -> BigInt {
     let (a, b) = c;
 
     let mut input = Vec::new();
 
     for ai in a {
-        input.extend(ai.to_bytes_be());
+        input.extend(ai.to_bytes_be().1);
     }
 
-    input.extend(b.to_bytes_be());
-    input.extend(key.to_bytes_be());
+    input.extend(b.to_bytes_be().1);
+    input.extend(key.to_bytes_be().1);
 
     let hash = digest(input.as_slice());
     let hash = hash.as_bytes();
@@ -114,7 +113,7 @@ fn rand_from_cipher_and_key(c: &Ciphertext, key: &BigUint, n: usize) -> BigUint 
     seed.iter_mut().zip(hash).for_each(|(s, h)| *s = *h);
 
     let mut rng = SmallRng::from_seed(seed);
-    rng.gen_biguint(n as u64)
+    rng.gen_bigint(n as u64)
 }
 
 pub struct Dealer {
@@ -129,7 +128,7 @@ impl Dealer {
         let m = crypto.m;
         let q = &crypto.q;
 
-        let mut parties = (0..NUMBER_OF_PARTIES)
+        let mut parties = (1..=NUMBER_OF_PARTIES)
             .map(|number| Party::new(number, crypto.clone()))
             .collect::<Vec<_>>();
         let pk = Self::keygen(n, m, q, &mut parties);
@@ -144,9 +143,9 @@ impl Dealer {
     pub fn keygen(
         n: usize,
         m: usize,
-        q: &BigUint,
+        q: &BigInt,
         parties: &mut Vec<Party>,
-    ) -> (Vec<Vec<BigUint>>, Vec<BigUint>) {
+    ) -> (Vec<Vec<BigInt>>, Vec<BigInt>) {
         let u = parties.len();
 
         let mut s = Vec::with_capacity(n);
@@ -183,6 +182,7 @@ impl Dealer {
             let sk = sks[i].clone();
             party.set_sk(&sk);
             party.set_pk_from_a(a.clone());
+            party.keys.extend(keys[i].clone());
         }
 
         (a, b)
