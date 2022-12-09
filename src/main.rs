@@ -4,7 +4,7 @@ use threshold::Dealer;
 mod lwe;
 mod pke;
 mod random;
-mod shamir;
+mod lagrange;
 mod threshold;
 
 fn main() {

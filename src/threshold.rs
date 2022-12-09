@@ -9,7 +9,7 @@ const NUMBER_OF_PARTIES: usize = 6;
 use crate::{
     lwe::{self, Ciphertext, Lwe},
     pke::Pke,
-    shamir::{interpolate, Share},
+    lagrange::{interpolate, Share},
 };
 
 pub struct Party {
