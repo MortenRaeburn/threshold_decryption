@@ -1,5 +1,5 @@
 use crate::pke::Pke;
-use num::{bigint::RandomBits, traits::Pow, BigInt, Zero};
+use num::{bigint::RandomBits, traits::Pow, BigInt, Zero, Integer};
 use rand::prelude::*;
 
 pub type PublicKey = (Vec<Vec<BigInt>>, Vec<BigInt>);
@@ -32,7 +32,7 @@ impl Pke for Lwe {
     type Plaintext = Plaintext;
 
     fn keygen(&self) -> (Self::PublicKey, Self::SecretKey) {
-        let sk = new_rand_BigInt_vec(self.n);
+        let sk = new_rand_big_int_vec(self.n);
         let pk = Self::gen_pk(&sk, self.m, self.n, &self.q);
 
         (pk, sk)
@@ -46,42 +46,41 @@ impl Pke for Lwe {
 
         let mut subs_i = (0..self.m).collect::<Vec<_>>();
         subs_i.shuffle(&mut rng);
-        let subs_i = subs_i.get(0..self.m / 2).unwrap();
+        let subs_i = &subs_i[0..self.m / 2];
 
         let mut a = vec![BigInt::zero(); self.m];
         let mut b = BigInt::from(*m) * &self.q / 2u32;
 
         for i in subs_i {
-            let ai = pk.0.get(*i).unwrap();
-
-            let bi = pk.1.get(*i).unwrap();
+            let ai = &pk.0[*i];
+            let bi = &pk.1[*i];
 
             a.iter_mut()
                 .zip(ai)
-                .for_each(|(a_elem, ai_elem)| *a_elem = (a_elem.clone() + ai_elem) % &self.q);
+                .for_each(|(a_elem, ai_elem)| *a_elem = (a_elem.clone() + ai_elem).mod_floor(&self.q));
 
-            b = (b + bi) % &self.q;
+            b = (b + bi).mod_floor(&self.q);
         }
 
         (a, b)
     }
 
     fn decrypt(&self, sk: &Self::SecretKey, c: &Self::Ciphertext) -> Self::Plaintext {
-        let q = BigInt::from(self.q.clone());
-        let b = BigInt::from(c.1.clone());
+        let q = &self.q;
+        let b = &c.1;
 
         let a: BigInt =
             c.0.iter()
                 .zip(sk)
-                .fold(BigInt::zero(), |acc, (ai, si)| (acc + ai * si) % &self.q)
+                .fold(BigInt::zero(), |acc, (ai, si)| (acc + ai * si).mod_floor(q))
                 .into();
 
-        let m = (b - a) % &q;
+        let m = (b - a).mod_floor(q);
 
-        let lower = &q / 4u32;
-        let upper = &q + &lower;
+        let lower = q / 4u32;
+        let upper = q - &lower;
 
-        if m < lower && upper < m {
+        if lower < m && m < upper {
             return 1;
         }
 
@@ -89,7 +88,7 @@ impl Pke for Lwe {
     }
 }
 
-fn new_rand_BigInt_vec(n: usize) -> Vec<BigInt> {
+fn new_rand_big_int_vec(n: usize) -> Vec<BigInt> {
     let mut rng = rand::thread_rng();
 
     (0..n)
@@ -113,9 +112,9 @@ impl Lwe {
     }
 
     pub fn gen_pk(s: &[BigInt], m: usize, n: usize, q: &BigInt) -> (Vec<Vec<BigInt>>, Vec<BigInt>) {
-        let a = (0..m).map(|_| new_rand_BigInt_vec(n)).collect::<Vec<_>>();
+        let a = (0..m).map(|_| new_rand_big_int_vec(n)).collect::<Vec<_>>();
 
-        let _e = Self::gen_e(m, q);
+        // let _e = Self::gen_e(m, q);
 
         let b = Self::gen_b(&a, s, q);
 
@@ -127,7 +126,7 @@ impl Lwe {
             .iter()
             .map(|ai| {
                 ai.iter().zip(s).fold(BigInt::zero(), |acc, (ai_elem, si)| {
-                    (acc + ai_elem * si) % q
+                    (acc + ai_elem * si).mod_floor(q)
                 })
             })
             .collect::<Vec<_>>();

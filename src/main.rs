@@ -1,10 +1,11 @@
+use num::{BigInt, Integer, One};
 use pke::Pke;
 use threshold::Dealer;
 
+mod lagrange;
 mod lwe;
 mod pke;
 mod random;
-mod lagrange;
 mod threshold;
 
 fn main() {

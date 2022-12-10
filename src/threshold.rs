@@ -1,6 +1,6 @@
 use core::panic;
 
-use num::{bigint::RandBigInt, BigInt, Zero};
+use num::{bigint::RandBigInt, BigInt, Zero, Integer};
 use rand::{rngs::SmallRng, SeedableRng};
 use sha256::digest;
 
@@ -81,12 +81,12 @@ impl Party {
 
     fn decrypt2(&self, shares: &[Share]) -> lwe::Plaintext {
         let q = &self.crypto.q;
-        let m = interpolate(shares)(0) % q;
+        let m = interpolate(shares)(0).mod_floor(q);
 
         let lower = q / 4u32;
-        let upper = q + &lower;
+        let upper = q - &lower;
 
-        if m < lower && upper < m {
+        if lower < m && m < upper {
             return 1;
         }
 
