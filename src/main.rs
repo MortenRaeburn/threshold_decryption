@@ -1,6 +1,6 @@
-use num::{BigInt, Integer, One};
-use pke::Pke;
 use threshold::Dealer;
+
+use crate::pke::Pke;
 
 mod lagrange;
 mod lwe;
@@ -10,7 +10,7 @@ mod threshold;
 
 fn main() {
     let m = 1;
-    let n = 10;
+    let n = 25;
     let crypto = lwe::Lwe::new(n);
 
     loop {

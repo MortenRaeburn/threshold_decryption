@@ -1,6 +1,7 @@
 use crate::pke::Pke;
-use num::{bigint::RandomBits, traits::Pow, BigInt, Zero, Integer};
-use rand::prelude::*;
+use num::{bigint::RandomBits, traits::Pow, BigInt, FromPrimitive, Integer, ToPrimitive, Zero};
+use probability::{prelude::*, source::Source};
+use rand::{prelude::*, rngs::OsRng};
 
 pub type PublicKey = (Vec<Vec<BigInt>>, Vec<BigInt>);
 pub type SecretKey = Vec<BigInt>;
@@ -55,9 +56,9 @@ impl Pke for Lwe {
             let ai = &pk.0[*i];
             let bi = &pk.1[*i];
 
-            a.iter_mut()
-                .zip(ai)
-                .for_each(|(a_elem, ai_elem)| *a_elem = (a_elem.clone() + ai_elem).mod_floor(&self.q));
+            a.iter_mut().zip(ai).for_each(|(a_elem, ai_elem)| {
+                *a_elem = (a_elem.clone() + ai_elem).mod_floor(&self.q)
+            });
 
             b = (b + bi).mod_floor(&self.q);
         }
@@ -76,6 +77,7 @@ impl Pke for Lwe {
                 .into();
 
         let m = (b - a).mod_floor(q);
+        dbg!(&m);
 
         let lower = q / 4u32;
         let upper = q - &lower;
@@ -97,37 +99,44 @@ fn new_rand_big_int_vec(n: usize) -> Vec<BigInt> {
 }
 
 impl Lwe {
-    fn gen_e(n: usize, q: &BigInt) -> Vec<BigInt> {
-        eprintln!("WARNING: Randomness not implemented. All values of e are 0");
+    pub fn gen_e(n: usize, q: &BigInt) -> Vec<BigInt> {
+        let mut rng = rand::thread_rng();
+        let mut source = source::default(rng.gen());
 
-        // let mut rng = rand::thread_rng();
+        let sigma = q.to_f64().unwrap().sqrt().sqrt();
+        let mu = 0.;
 
-        // let sigma = q.sqrt().sqrt().to_f64().unwrap();
+        let dist = Gaussian::new(mu, sigma);
 
-        // Standard
-
-        // rng.sample_iter(dist);
-
-        (0..n).map(|_| BigInt::zero()).collect::<Vec<_>>()
+        (0..n)
+            .map(|_| {
+                let mut sample = dist.sample(&mut source);
+                sample = sample.round();
+                BigInt::from_f64(sample).unwrap().mod_floor(&q)
+            })
+            .collect()
     }
 
     pub fn gen_pk(s: &[BigInt], m: usize, n: usize, q: &BigInt) -> (Vec<Vec<BigInt>>, Vec<BigInt>) {
         let a = (0..m).map(|_| new_rand_big_int_vec(n)).collect::<Vec<_>>();
 
-        // let _e = Self::gen_e(m, q);
+        let e = Self::gen_e(m, q);
 
-        let b = Self::gen_b(&a, s, q);
+        let b = Self::gen_b(&a, s, q, &e);
 
         (a, b)
     }
 
-    pub fn gen_b(a: &[Vec<BigInt>], s: &[BigInt], q: &BigInt) -> Vec<BigInt> {
+    pub fn gen_b(a: &[Vec<BigInt>], s: &[BigInt], q: &BigInt, e: &[BigInt]) -> Vec<BigInt> {
         let b = a
             .iter()
             .map(|ai| {
-                ai.iter().zip(s).fold(BigInt::zero(), |acc, (ai_elem, si)| {
-                    (acc + ai_elem * si).mod_floor(q)
-                })
+                ai.iter()
+                    .zip(s)
+                    .zip(e)
+                    .fold(BigInt::zero(), |acc, ((ai_elem, si), ei)| {
+                        (acc + (ai_elem * si + ei)).mod_floor(q)
+                    })
             })
             .collect::<Vec<_>>();
         b
