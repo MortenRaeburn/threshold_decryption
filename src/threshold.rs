@@ -1,7 +1,7 @@
 use core::panic;
 
-use num::{bigint::RandBigInt, BigInt, Integer, Zero};
-use rand::{rngs::SmallRng, SeedableRng};
+use num::{bigint::RandBigInt, BigInt, FromPrimitive, Integer, ToPrimitive, Zero};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use sha256::digest;
 
 const NUMBER_OF_PARTIES: usize = 10;
@@ -39,14 +39,27 @@ impl Party {
         self.sk = Some(sk.clone());
     }
 
-    pub fn gen_b(&self, a: Vec<Vec<BigInt>>) -> Vec<BigInt> {
+    pub fn gen_b(&self, a: Vec<Vec<BigInt>>, e: &Vec<Vec<BigInt>>) -> Vec<BigInt> {
         let q = &self.crypto.q;
         let s = self.sk.clone().unwrap();
-        let m = self.crypto.m;
 
-        let e = Lwe::gen_e(m, q);
+        let e = e
+            .iter()
+            .map(|ei| {
+                let u = ei.len();
+
+                (ei.iter().sum::<BigInt>() / u).mod_floor(q)
+            })
+            .collect::<Vec<_>>();
 
         Lwe::gen_b(&a, &s, q, &e)
+    }
+
+    fn gen_e(&self) -> Vec<BigInt> {
+        let m = self.crypto.m;
+        let q = &self.crypto.q;
+
+        Lwe::gen_e(m, q)
     }
 
     fn decrypt1(&self, c: &lwe::Ciphertext) -> Share {
@@ -61,7 +74,7 @@ impl Party {
 
         let x = self.gen_x(&self.keys, c);
 
-        Share(self.number, e)
+        Share(self.number, x + e)
     }
 
     fn gen_x(&self, keys: &Vec<BigInt>, c: &lwe::Ciphertext) -> BigInt {
@@ -182,16 +195,47 @@ impl Dealer {
         }
 
         // Generate public key
-        let (a, b_) = Lwe::gen_pk(&s, m, n, q);
-        let mut bss = vec![Vec::with_capacity(u); m];
-        for party in parties.iter() {
-            let b = party.gen_b(a.clone());
-            for (i, bi) in b.iter().enumerate() {
-                bss[i].push((party.number, bi.clone()));
+        let mut es = vec![vec![vec![BigInt::zero(); u]; m]; u];
+        for (j, party) in parties.iter().enumerate() {
+            let e = party.gen_e();
+            for (i, ei) in e.iter().enumerate() {
+                let mut shares = Vec::with_capacity(u / 4 + 1);
+                shares.push(Share(0, ei.clone()));
+
+                for party in parties.iter().take(u / 4) {
+                    let r_val = party.rand_value(n);
+                    let share = Share(party.number, r_val);
+                    shares.push(share);
+                }
+                let l = interpolate(&shares);
+
+                for party in parties.iter() {
+                    let p = party.number - 1;
+                    es[p][i][j] = l(party.number);
+                }
             }
         }
 
-        (a, b_)
+        let (a, _) = Lwe::gen_pk(&s, m, n, q);
+        let mut bss = vec![Vec::with_capacity(u); m];
+        for party in parties.iter() {
+            let p = party.number - 1;
+            let b = party.gen_b(a.clone(), &es[p]);
+            for (i, bi) in b.iter().enumerate() {
+                let share = Share(party.number, bi.clone());
+
+                bss[i].push(share);
+            }
+        }
+
+        let mut b = Vec::with_capacity(m);
+
+        for bs in bss {
+            let l = interpolate(&bs);
+            b.push(l(0));
+        }
+
+        (a, b)
     }
 
     pub fn encrypt(&self, m: &lwe::Plaintext) -> lwe::Ciphertext {

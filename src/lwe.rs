@@ -98,7 +98,7 @@ fn new_rand_big_int_vec(n: usize) -> Vec<BigInt> {
 }
 
 impl Lwe {
-    pub fn gen_e(n: usize, q: &BigInt) -> Vec<BigInt> {
+    pub fn gen_e(m: usize, q: &BigInt) -> Vec<BigInt> {
         let mut rng = rand::thread_rng();
         let mut source = source::default(rng.gen());
 
@@ -107,7 +107,7 @@ impl Lwe {
 
         let dist = Gaussian::new(mu, sigma);
 
-        (0..n)
+        (0..m)
             .map(|_| {
                 let mut sample = dist.sample(&mut source);
                 sample = sample.round();
