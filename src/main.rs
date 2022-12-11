@@ -16,15 +16,14 @@ fn main() {
 
     loop {
         println!("---Starting round---");
-        // let m = rng.gen_range(0..=1);
-        let m = 1;
+        let m = rng.gen_range(0..=1);
+        // let m = 1;
         println!("m: {m}");
 
-        // let (pk, sk) = crypto.keygen();
-        // let c = crypto.encrypt(&pk, &m);
-        // let d = crypto.decrypt(&sk, &c);
-
-        // println!("{d}");
+        let (pk, sk) = crypto.keygen();
+        let c = crypto.encrypt(&pk, &m);
+        let d = crypto.decrypt(&sk, &c);
+        println!("Standard LWE: {d}");
 
         let dealer = Dealer::new(n);
         let c = dealer.encrypt(&m);

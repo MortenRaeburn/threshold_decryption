@@ -1,7 +1,7 @@
 use core::panic;
 
-use num::{bigint::RandBigInt, BigInt, FromPrimitive, Integer, ToPrimitive, Zero};
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use num::{bigint::RandBigInt, BigInt, Integer, Zero};
+use rand::{rngs::SmallRng, SeedableRng};
 use sha256::digest;
 
 const NUMBER_OF_PARTIES: usize = 10;
@@ -39,17 +39,13 @@ impl Party {
         self.sk = Some(sk.clone());
     }
 
-    pub fn gen_b(&self, a: Vec<Vec<BigInt>>, e: &Vec<Vec<BigInt>>) -> Vec<BigInt> {
+    pub fn gen_b(&self, a: Vec<Vec<BigInt>>, e: &[Vec<BigInt>]) -> Vec<BigInt> {
         let q = &self.crypto.q;
         let s = self.sk.clone().unwrap();
 
         let e = e
             .iter()
-            .map(|ei| {
-                let u = ei.len();
-
-                (ei.iter().sum::<BigInt>() / u).mod_floor(q)
-            })
+            .map(|ei| ei.iter().sum::<BigInt>().mod_floor(q))
             .collect::<Vec<_>>();
 
         Lwe::gen_b(&a, &s, q, &e)
