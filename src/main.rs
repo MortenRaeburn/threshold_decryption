@@ -24,7 +24,6 @@ fn main() {
         "encrypt",
         "decrypt",
         "dealer",
-        "dealer_encrypt",
         "dealer_decrypt",
     ];
     let mut benchmarks = Vec::with_capacity(STEPS);
@@ -66,11 +65,7 @@ fn main() {
 
         benchmark.push(dealer_time.as_micros());
 
-        let now = Instant::now();
         let c = dealer.encrypt(&m);
-        let dealer_encrypt_time = now.elapsed();
-
-        benchmark.push(dealer_encrypt_time.as_micros());
 
         let now = Instant::now();
         let res = dealer.decrypt(&c);
