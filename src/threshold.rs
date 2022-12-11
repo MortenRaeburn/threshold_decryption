@@ -215,8 +215,7 @@ impl Dealer {
         let (a, _) = Lwe::gen_pk(&s, m, n, q);
         let mut bss = vec![Vec::with_capacity(u); m];
         for party in parties.iter() {
-            let p = party.number - 1;
-            let b = party.gen_b(a.clone(), &es[p]);
+            let b = party.gen_b(a.clone(), &vec![vec![BigInt::zero(); u]; m]);
             for (i, bi) in b.iter().enumerate() {
                 let share = Share(party.number, bi.clone());
 
@@ -238,20 +237,20 @@ impl Dealer {
         self.crypto.encrypt(&self.pk, m)
     }
 
-    pub fn decrypt(&self, c: &lwe::Ciphertext) {
+    pub fn decrypt(&self, c: &lwe::Ciphertext) -> Vec<(usize, usize)> {
+        let u = self.parties.len();
         let mut shares = Vec::new();
-        let mut res = Vec::new();
+        let mut ress = Vec::with_capacity(u);
 
         for party in &self.parties {
             shares.push(party.decrypt1(c))
         }
 
         for party in &self.parties {
-            res.push(party.decrypt2(&shares));
+            let res = party.decrypt2(&shares);
+            ress.push((party.number, res));
         }
 
-        for res in res {
-            println!("{res}");
-        }
+        ress
     }
 }

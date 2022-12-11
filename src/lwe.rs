@@ -76,7 +76,6 @@ impl Pke for Lwe {
                 .fold(BigInt::zero(), |acc, (ai, si)| (acc + ai * si).mod_floor(q));
 
         let m = (b - a).mod_floor(q);
-        dbg!(&m);
 
         let lower = q / 4u32;
         let upper = q - &lower;
