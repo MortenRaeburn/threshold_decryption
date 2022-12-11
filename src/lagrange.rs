@@ -1,4 +1,4 @@
-use num::{BigInt, One, Zero, BigRational};
+use num::{BigInt, BigRational, One, Zero};
 
 #[derive(Clone)]
 pub struct Share(pub usize, pub BigInt);
@@ -9,7 +9,7 @@ fn lagrange(shares: &[Share], j: usize, x: usize) -> BigRational {
 
     for share in shares.iter() {
         let xm = share.0;
-        
+
         if xm == xj {
             continue;
         }

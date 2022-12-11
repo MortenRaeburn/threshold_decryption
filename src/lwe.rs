@@ -1,7 +1,7 @@
 use crate::pke::Pke;
 use num::{bigint::RandomBits, traits::Pow, BigInt, FromPrimitive, Integer, ToPrimitive, Zero};
-use probability::{prelude::*, source::Source};
-use rand::{prelude::*, rngs::OsRng};
+use probability::prelude::*;
+use rand::prelude::*;
 
 pub type PublicKey = (Vec<Vec<BigInt>>, Vec<BigInt>);
 pub type SecretKey = Vec<BigInt>;
@@ -73,8 +73,7 @@ impl Pke for Lwe {
         let a: BigInt =
             c.0.iter()
                 .zip(sk)
-                .fold(BigInt::zero(), |acc, (ai, si)| (acc + ai * si).mod_floor(q))
-                .into();
+                .fold(BigInt::zero(), |acc, (ai, si)| (acc + ai * si).mod_floor(q));
 
         let m = (b - a).mod_floor(q);
         dbg!(&m);
@@ -112,7 +111,7 @@ impl Lwe {
             .map(|_| {
                 let mut sample = dist.sample(&mut source);
                 sample = sample.round();
-                BigInt::from_f64(sample).unwrap().mod_floor(&q)
+                BigInt::from_f64(sample).unwrap().mod_floor(q)
             })
             .collect()
     }
