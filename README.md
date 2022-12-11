@@ -42,6 +42,8 @@ Party 10: 1
 - Standard LWE: The output of dec(enc(m)) for the LWE crypto system (non-distributed).
 - Party 1-10: The output of dec(enc(m)) for each party in the threshold decryption setting.
 
+Lastly, after the final step, it will output the result of the benchmarks in `csv` format.
+
 
 ## Reviewing the code
 The code is located entirely the the `src` directory. The code is split into modules, and the benchmarking code can be found in `main.rs`. Here the choice of `INIT_N` and `STEPS` can be set. To change the number of parties in the distributed setting, the variable `NUMBER_OF_PARTIES` in `threshold.rs` can be set.
